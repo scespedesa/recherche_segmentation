@@ -10,26 +10,25 @@ import random
 from pathlib import Path
 
 def split_dataset_aleatoire(base_folder, image_folder, label_folder, class_names,n_train, n_val, n_test, seed=42):
-    # Recolectar imágenes disponibles
+    # Collect images
     images = sorted([f for f in os.listdir(image_folder) if f.endswith((".jpg", ".png"))])
     total = len(images)
     
-    # Validación
+    # Validation
     if n_train + n_val + n_test > total:
         raise ValueError("La suma de n_train, n_val y n_test excede el número total de imágenes.")
 
-    # Aleatorizar orden
+    # randomiser
     random.seed(seed)
     random.shuffle(images)
 
-    # Dividir
     train_imgs = images[:n_train]
     val_imgs = images[n_train:n_train + n_val]
     test_imgs = images[n_train + n_val:n_train + n_val + n_test]
 
     print(f"✅ División aleatoria: {len(train_imgs)} train, {len(val_imgs)} val, {len(test_imgs)} test")
 
-    # Crear carpetas y copiar
+    # Create folder and copy
     for split_name, split_imgs in zip(["train", "val", "test"], [train_imgs, val_imgs, test_imgs]):
         for sub in ["images", "labels"]:
             os.makedirs(os.path.join(base_folder, split_name, sub), exist_ok=True)
@@ -49,11 +48,8 @@ def split_dataset_aleatoire(base_folder, image_folder, label_folder, class_names
 
 def split_dataset(base_folder, image_folder, label_folder, class_names, n_train ,n_test=20, n_val=20):
 
-    # Archivos disponibles
     images = sorted([f for f in os.listdir(image_folder) if f.endswith((".jpg", ".png"))])
     
-
-    # División
     total = len(images)
     n_train = int(n_train)
     n_val = int(n_val)
@@ -61,9 +57,7 @@ def split_dataset(base_folder, image_folder, label_folder, class_names, n_train 
     val_imgs = images[n_test:n_test + n_val]
     train_imgs = images[n_test + n_val:n_val+n_train+n_test]
 
-    print(f"✅ División: {len(train_imgs)} train, {len(val_imgs)} val, {len(test_imgs)} test")
-
-    # Estructura esperada por YOLO
+    # Structure for YOLO
     for split_name, split_imgs in zip(["train", "val", "test"], [train_imgs, val_imgs, test_imgs]):
         for sub in ["images", "labels"]:
             os.makedirs(os.path.join(base_folder, split_name, sub), exist_ok=True)
@@ -72,27 +66,25 @@ def split_dataset(base_folder, image_folder, label_folder, class_names, n_train 
             base_name = Path(img_file).stem
             label_file = base_name + ".txt"
 
-            # Copiar imagen
+            # Copy imagen
             shutil.copy(os.path.join(image_folder, img_file),
                         os.path.join(base_folder, split_name, "images", img_file))
 
-            # Copiar etiqueta
+            # Copy label
             label_path = os.path.join(label_folder, label_file)
             if os.path.exists(label_path):
                 shutil.copy(label_path,
                             os.path.join(base_folder, split_name, "labels", label_file))
 
 def split_dataset_porcentage(base_folder, image_folder, label_folder, class_names, seed=42):
-    # Configuración
+    # set up
     train_ratio, val_ratio, test_ratio = 0.6, 0.2, 0.2
     assert train_ratio + val_ratio + test_ratio == 1.0
 
-    # Archivos disponibles
     images = sorted([f for f in os.listdir(image_folder) if f.endswith((".jpg", ".png"))])
     random.seed(seed)
     random.shuffle(images)
 
-    # División
     total = len(images)
     n_train = int(train_ratio * total)
     n_val = int(val_ratio * total)
@@ -100,9 +92,6 @@ def split_dataset_porcentage(base_folder, image_folder, label_folder, class_name
     val_imgs = images[n_train:n_train + n_val]
     test_imgs = images[n_train + n_val:]
 
-    print(f"✅ División: {len(train_imgs)} train, {len(val_imgs)} val, {len(test_imgs)} test")
-
-    # Estructura esperada por YOLO
     for split_name, split_imgs in zip(["train", "val", "test"], [train_imgs, val_imgs, test_imgs]):
         for sub in ["images", "labels"]:
             os.makedirs(os.path.join(base_folder, split_name, sub), exist_ok=True)
@@ -111,11 +100,11 @@ def split_dataset_porcentage(base_folder, image_folder, label_folder, class_name
             base_name = Path(img_file).stem
             label_file = base_name + ".txt"
 
-            # Copiar imagen
+            #copy image
             shutil.copy(os.path.join(image_folder, img_file),
                         os.path.join(base_folder, split_name, "images", img_file))
 
-            # Copiar etiqueta
+            # copy label
             label_path = os.path.join(label_folder, label_file)
             if os.path.exists(label_path):
                 shutil.copy(label_path,
@@ -133,7 +122,7 @@ task: segment
 """
     with open(yaml_path, "w") as f:
         f.write(content)
-    print(f"✅ data.yaml generado en {yaml_path}")
+    print(f"✅ data.yaml generated in {yaml_path}")
 
 
 def filter_image(tiff_image):
@@ -153,16 +142,15 @@ def filter_image(tiff_image):
 def save_yolo_segmentation(filename, width, height, dataset):
     label_path = filename  # Ya debe tener el .txt
     with open(label_path, "w") as f:
-        for class_id, name in enumerate(["crack", "grains"]):
+        for class_id, name in enumerate(["cracks", "grains"]):
             for polygon in dataset[name]:
-                # Asegurar que cada punto tiene dos coordenadas (x, y)
+                # be sure that each point has two coordinates (x, y)
                 if not all(len(point) == 2 for point in polygon):
                     continue
                 
-                # Normalizar coordenadas
+                # Normalize
                 norm_polygon = [(y / width, x / height) for x, y in polygon]
 
-                # YOLO requiere mínimo 6 valores (3 puntos)
                 if len(norm_polygon) < 3:
                     continue
 
@@ -192,22 +180,18 @@ def process_images(input_folder, output_folder, images_folder, labels_folder, po
         
         img = np.double(img)
         
-       
-        #cropped_img = cv2.rotate(cropped_img, cv2.ROTATE_180)
-        # Aplicar mediana Gaussiano para suavizar ruido
-        #cropped_img = cv2.GaussianBlur(cropped_img, (5, 5), 0)
-        
+           
         ftd_img, segm_img = filter_image(img)
-        dataset = {"crack": [], "grains": []}
+        dataset = {"cracks": [], "grains": []}
         
         overlay_img = img.copy()
         height, width = img.shape[:2]
 
-        #overlay_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
+
         
         image_metadata = {"filename": os.path.basename(image_path), "size": os.path.getsize(input_path), "regions": []}
         
-        for label, name, color in zip([0, 2], ["crack", "grains"], [(0, 0, 255), (255, 0, 0)]):
+        for label, name, color in zip([0, 2], ["cracks", "grains"], [(0, 0, 255), (255, 0, 0)]):
             contours = find_contours(np.pad(segm_img==label, 1), 0.5)
             for contour in contours:
                 polygon = approximate_polygon(contour, tolerance=1.0).astype(np.int32)
@@ -238,23 +222,24 @@ n2 = 101
 w = 320
 
 process_images(input_folder, output_folder, images_folder, labels_folder, polygons_folder, n1, n2, w)
-nums_ale = random.sample(range(1, 61), 10)  # 10 números únicos del 1 al 60
-nums_ale.sort()
+#nums_ale = random.sample(range(1, 61), 10)  # 10 números únicos del 1 al 60
+nums_ale = [2,8,14, 20, 26, 32, 38, 46, 54, 60]
+#nums_ale.sort()
 i=0
 for num_ale in nums_ale:
     i+=1
+    seed = random.randint(0, 1000)
     print(num_ale)
-    if not os.path.exists(f"./protocol_datasets/dataset_v{i}"):
-        os.makedirs(f"./protocol_datasets/dataset_v{i}")
+    if not os.path.exists(f"./datasets_3/dataset_v{i}"):
+        os.makedirs(f"./datasets_3/dataset_v{i}")
     split_dataset_aleatoire(
-        base_folder=f"./protocol_datasets/dataset_v{i}",
+        base_folder=f"./datasets_3/dataset_v{i}",
         image_folder=f"./dataset-test/images",
         label_folder=f"./dataset-test/labels",
-        class_names=["crack", "grains"],
+        class_names=["cracks", "grains"],
         n_train=num_ale,
         n_val=20,
         n_test=20,
-        seed=i
-        
+        seed=seed  
     )
-    create_data_yaml(f"./all_datasets/dataset-test_v{i}", ["crack", "grains"])
+    create_data_yaml(f"./datasets_3/dataset_v{i}", ["cracks", "grains"])
